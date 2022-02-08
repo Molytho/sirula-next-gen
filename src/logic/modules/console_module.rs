@@ -1,10 +1,13 @@
+use log::error;
 use std::rc::Rc;
 use std::path::Path;
 use std::process::Command;
-use crate::{Id, Dirs, config::ModuleConfig};
+use crate::{Id, config::ModuleConfig};
 use crate::logic::{Item, ItemModul, CacheControl};
 
 static TEXT: &str = "Execute as command";
+static DEFAULT_BINARY: &str = "/usr/bin/alacritty";
+static DEFAULT_ARGS: [&str; 3] = ["-e", "sh", "-c"];
 
 #[derive(Debug)]
 struct ConsoleItem {
@@ -38,14 +41,13 @@ impl Item for ConsoleItem {
 pub struct ConsoleModule<'a> {
     item: ConsoleItem,
     config: Option<ModuleConfig<'a>>,
-    dirs: &'a Dirs
 }
 impl<'a> ConsoleModule<'a> {
-    pub fn new(config: Option<ModuleConfig<'a>>, dirs: &'a Dirs, id: u16) -> Self {
-        ConsoleModule { item: ConsoleItem::new(id), config, dirs }
+    pub fn new(config: Option<ModuleConfig<'a>>, id: u16) -> Self {
+        ConsoleModule { item: ConsoleItem::new(id), config }
     }
-    pub fn boxed_item_module(config: Option<ModuleConfig<'a>>, dirs: &'a Dirs, id: u16) -> Box<dyn ItemModul + 'a> {
-        Box::new(ConsoleModule::new(config, dirs, id))
+    pub fn boxed_item_module(config: Option<ModuleConfig<'a>>, id: u16) -> Box<dyn ItemModul + 'a> {
+        Box::new(ConsoleModule::new(config, id))
     }
 }
 impl ItemModul for ConsoleModule<'_> {
@@ -53,16 +55,27 @@ impl ItemModul for ConsoleModule<'_> {
         self.item.command = search_term;
     }
     fn select(&self, _: Id) -> Result<(), i32> {
-        debug_assert!(!self.item.command.is_empty());
-        match Command::new("/usr/bin/alacritty")
-            .arg("-e")
-            .arg("sh")
-            .arg("-c")
-            .arg(self.item.command.as_ref())
+        assert!(!self.item.command.is_empty());
+
+        let binary = self.config.as_ref().map(|config| {
+            config.get_config::<String>("binary").ok()
+        }).flatten().unwrap_or(DEFAULT_BINARY.to_string());
+        let args = self.config.as_ref().map(|config| {
+            config.get_config::<Vec<String>>("args").ok()
+        }).flatten().unwrap_or(DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec());
+
+        let mut command = Command::new(binary);
+        for arg in args {
+            command.arg(arg);
+        }
+        match command.arg(self.item.command.as_ref())
             .spawn()
         {
             Ok(_) => Ok(()),
-            Err(_) => Err(-1)
+            Err(e) => {
+                error!("{}", e);
+                Err(-1)
+            }
         }
     }
     fn get_items(&self) -> Vec<&(dyn Item)> {

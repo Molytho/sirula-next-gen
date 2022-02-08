@@ -1,4 +1,5 @@
-use log::debug;
+use std::fmt::Debug;
+use log::{debug, info, warn};
 
 use crate::Dirs;
 use crate::dirs::DirError;
@@ -87,6 +88,7 @@ impl Config {
         debug!("Opening config file: {:?}", file);
         let mut config_toml = String::new();
         file.read_to_string(&mut config_toml)?;
+        debug!("File content:\n {}", config_toml);
 
         let table = config_toml.parse::<Value>()?;
         debug_assert!(table.is_table());
@@ -103,15 +105,18 @@ impl Config {
         Config::from_file(File::open(path)?)
     }
 
-    pub fn get_module_config<'a>(&'a self, name: &str) -> ConfigResult<ModuleConfig<'a>> {
+    pub fn get_module_config(&self, name: &str) -> ConfigResult<ModuleConfig<'_>> {
         if self.config.contains_key(name) {
             let value = &self.config[name];
             if value.is_table() {
+                debug!("Created module_config object for {}", name);
                 Ok(ModuleConfig { values: value.as_table().expect("Toml library broke assumption") })
             } else {
+                warn!("Config file has wrong format:\nExpected section for name {}", name);
                 Err(ConfigErrorType::WrongType.into())
             }
         } else {
+            info!("No configuration for module {} found", name);
             Err(ConfigErrorType::NotFound.into())
         }
     }
@@ -123,11 +128,20 @@ pub struct ModuleConfig<'a> {
 }
 
 impl <'a> ModuleConfig<'a> {
-    pub fn get_config<'de, T : Deserialize<'de>>(&self, name: &str) -> ConfigResult<T> {
+    pub fn get_config<'de, T : Deserialize<'de> + Debug>(&self, name: &str) -> ConfigResult<T> {
         if self.values.contains_key(name) {
-            self.values[name].clone().try_into()
-                .or(Err(ConfigErrorType::WrongType.into()))
+            match self.values[name].clone().try_into() {
+                Ok(value) => {
+                    debug!("Found value {:?} for option {}", value, name);
+                    Ok(value)
+                }
+                Err(_) => {
+                    warn!("Value had wrong format: {}", name);
+                    Err(ConfigErrorType::WrongType.into())
+                }
+            }
         } else {
+            info!("Config {} not found", name);
             Err(ConfigErrorType::NotFound.into())
         }
     }

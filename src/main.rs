@@ -3,7 +3,7 @@ mod config;
 mod logic;
 
 use std::path::Path;
-use log::{debug, info};
+use log::{debug};
 use config::Config;
 use dirs::Dirs;
 use crate::logic::{Id, Controller};
@@ -22,10 +22,10 @@ fn main() -> Result<(), i32> {
     let input = read_input();
     controller.set_search_term(input);
     debug!("{:?}", controller);
-    info!("Available options:");
+    println!("Available options:");
     let mut count = 1;
     for item in controller.iter() {
-        info!("{}: {}", count, item);
+        println!("{}: {}", count, item);
         count += 1;
     }
     controller.select(Id::new(0, 0))

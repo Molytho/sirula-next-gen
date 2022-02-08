@@ -18,7 +18,6 @@ impl<'a> Controller<'a>
         item_modules.push(
             ConsoleModule::boxed_item_module(
                 config.get_module_config("Console").ok(),
-                dirs,
                 0
             )
         );

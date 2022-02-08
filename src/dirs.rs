@@ -1,8 +1,8 @@
 use log::debug;
 
-use core::fmt::Display;
-use std::error::Error;
 use std::fs::{File, OpenOptions};
+use std::fmt::Display;
+use std::error::Error;
 use xdg::BaseDirectoriesError;
 
 #[derive(Debug)]
@@ -54,7 +54,7 @@ pub struct Dirs {
 
 impl Dirs {
     pub fn new(dir_name: &str) -> DirResult<Dirs> {
-        debug!("Creating Dirs object with {}", dir_name);
+        debug!("Creating Dirs object with prefix {}", dir_name);
         Ok(Dirs { xdg_dirs: xdg::BaseDirectories::with_prefix(dir_name)? })
     }
 
