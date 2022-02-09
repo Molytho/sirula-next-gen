@@ -1,12 +1,14 @@
 mod dirs;
 mod config;
 mod logic;
+mod ui;
 
+use ui::App;
 use std::path::Path;
-use log::{debug};
+use log::debug;
 use config::Config;
 use dirs::Dirs;
-use crate::logic::{Id, Controller};
+use logic::{Id, Controller};
 
 fn main() -> Result<(), i32> {
     env_logger::init();
@@ -28,7 +30,15 @@ fn main() -> Result<(), i32> {
         println!("{}: {}", count, item);
         count += 1;
     }
-    controller.select(Id::new(0, 0))
+    //controller.select(Id::new(0, 0))
+
+    let app = App::new("com.molytho.sirula-next-gen");
+    let result = app.run();
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result)
+    }
 }
 
 fn read_input() -> String {

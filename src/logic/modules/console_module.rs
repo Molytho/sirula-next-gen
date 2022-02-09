@@ -21,7 +21,7 @@ impl ConsoleItem {
 }
 impl Item for ConsoleItem {
     fn get_main_text(&self) -> &str {
-        &TEXT
+        TEXT
     }
     fn get_sub_text(&self) -> &str {
         self.command.as_str()
@@ -54,8 +54,9 @@ impl ItemModul for ConsoleModule<'_> {
     fn set_search_term(&mut self, search_term: Rc<String>) {
         self.item.command = search_term;
     }
-    fn select(&self, _: Id) -> Result<(), i32> {
+    fn select(&self, id: Id) -> Result<(), i32> {
         assert!(!self.item.command.is_empty());
+        assert!(id.get_item_id() == 0);
 
         let binary = self.config.as_ref().map(|config| {
             config.get_config::<String>("binary").ok()
