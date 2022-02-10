@@ -1,10 +1,6 @@
-use std::borrow::BorrowMut;
-use once_cell::unsync::Lazy;
 use std::fmt::Debug;
 use log::{debug, info, warn};
-
-use crate::Dirs;
-use crate::dirs::DirError;
+use crate::dirs::{Dirs, DirError};
 use core::fmt::Display;
 use std::borrow::Borrow;
 use std::error::Error;
@@ -129,7 +125,7 @@ pub struct ModuleConfig<'a> {
     values: &'a Table
 }
 
-impl<'a> ModuleConfig<'a> {
+impl ModuleConfig<'_> {
     pub fn get_config<'de, T : Deserialize<'de> + Debug>(&self, name: &str) -> ConfigResult<T> {
         if self.values.contains_key(name) {
             match self.values[name].clone().try_into() {
@@ -149,19 +145,37 @@ impl<'a> ModuleConfig<'a> {
     }
 }
 
-pub trait ConfigProvider {
-    fn get_or<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T;
-    fn get_or_lazy<'de, T : Deserialize<'de> + Debug  + Default>(&self, name: &str, default: Lazy<T>) -> T;
-}
-impl ConfigProvider for Option<ModuleConfig<'_>> {
-    fn get_or<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T {
-        self.as_ref().map(|config| {
-            config.get_config::<T>(name).ok()
-        }).flatten().unwrap_or(default)
-    }
-    fn get_or_lazy<'de, T : Deserialize<'de> + Debug + Default>(&self, name: &str, mut default: Lazy<T>) -> T {
-        self.as_ref().map(|config| {
-            config.get_config::<T>(name).ok()
-        }).flatten().unwrap_or(std::mem::take(default.borrow_mut()))
-    }
+#[macro_export]
+macro_rules! local_config {
+    ($name:ident { $($field:ident : $type:ty = $field_str:literal ($default:expr) ),* }) => {
+        #[derive(Debug)]
+        pub struct $name { $(
+            pub $field: $type,
+        )* }
+        impl $name {
+            pub fn new(config: Option<ModuleConfig<'_>>) -> $name {
+                if let Some(c) = config {
+                    $name::from_instance(c)
+                } else {
+                    $name::default()
+                }
+            }
+            fn from_instance(config: ModuleConfig<'_>) -> $name {
+                Self {
+                    $(
+                        $field: config.get_config::<$type>($field_str).unwrap_or_else(|_| $default),
+                    )*
+                }
+            }
+        }
+        impl Default for $name {
+            fn default() -> Self {
+                Self {
+                    $(
+                        $field: $default,
+                    )*
+                }
+            }
+        }
+    };
 }

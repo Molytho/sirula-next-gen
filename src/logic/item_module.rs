@@ -1,5 +1,4 @@
-use crate::Id;
-use crate::logic::Item;
+use crate::logic::{Id, Item};
 use std::rc::Rc;
 
 pub trait ItemModul : std::fmt::Debug {

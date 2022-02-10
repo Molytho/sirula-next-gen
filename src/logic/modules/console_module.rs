@@ -1,11 +1,10 @@
-use once_cell::unsync::Lazy;
-use crate::config::ConfigProvider;
 use log::error;
 use std::rc::Rc;
 use std::path::Path;
 use std::process::Command;
-use crate::{Id, config::ModuleConfig};
-use crate::logic::{Item, ItemModul, CacheControl};
+use crate::local_config;
+use crate::{config::ModuleConfig};
+use crate::logic::{Id, Item, ItemModul, CacheControl};
 
 static TEXT: &str = "Execute as command";
 static DEFAULT_BINARY: &str = "/usr/bin/alacritty";
@@ -39,20 +38,25 @@ impl Item for ConsoleItem {
     }
 }
 
+local_config!(ConsoleConfig {
+    binary: String = "binary" (DEFAULT_BINARY.to_string()),
+    args: Vec<String> = "args" (DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec())
+});
+
 #[derive(Debug)]
-pub struct ConsoleModule<'a> {
+pub struct ConsoleModule {
     item: ConsoleItem,
-    config: Option<ModuleConfig<'a>>,
+    config: ConsoleConfig
 }
-impl<'a> ConsoleModule<'a> {
-    pub fn new(config: Option<ModuleConfig<'a>>, id: u16) -> Self {
-        ConsoleModule { item: ConsoleItem::new(id), config }
+impl ConsoleModule {
+    pub fn new(config: Option<ModuleConfig<'_>>, id: u16) -> Self {
+        ConsoleModule { item: ConsoleItem::new(id), config: ConsoleConfig::new(config) }
     }
-    pub fn boxed_item_module(config: Option<ModuleConfig<'a>>, id: u16) -> Box<dyn ItemModul + 'a> {
+    pub fn boxed_item_module(config: Option<ModuleConfig<'_>>, id: u16) -> Box<dyn ItemModul> {
         Box::new(ConsoleModule::new(config, id))
     }
 }
-impl ItemModul for ConsoleModule<'_> {
+impl ItemModul for ConsoleModule {
     fn set_search_term(&mut self, search_term: Rc<String>) {
         self.item.command = search_term;
     }
@@ -60,14 +64,8 @@ impl ItemModul for ConsoleModule<'_> {
         assert!(!self.item.command.is_empty());
         assert!(id.get_item_id() == 0);
 
-        let binary = self.config.get_or_lazy::<String>(
-            "binary",
-            Lazy::new(||{DEFAULT_BINARY.to_string()})
-        );
-        let args = self.config.get_or_lazy::<Vec<String>>(
-            "args",
-            Lazy::new(|| {DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec()})
-        );
+        let binary = &self.config.binary;
+        let args = &self.config.args;
 
         let mut command = Command::new(binary);
         for arg in args {

@@ -1,18 +1,20 @@
-use gtk::subclass::prelude::ApplicationImplExt;
-use crate::Dirs;
-use gtk::prelude::GtkWindowExt;
-use std::borrow::Borrow;
+use crate::config::{Config, ModuleConfig};
+use crate::dirs::Dirs;
+use crate::local_config;
+use crate::logic::Controller;
 use crate::ui::main_window::MainWindow;
-use once_cell::unsync::OnceCell;
 use std::rc::Rc;
-use crate::Config;
+use once_cell::unsync::OnceCell;
+use gtk::subclass::prelude::{ApplicationImpl, ApplicationImplExt, ObjectImpl, ObjectSubclass, GtkApplicationImpl};
+use gtk::prelude::GtkWindowExt;
 use gtk::glib;
-use gtk::subclass::prelude::{ApplicationImpl, ObjectImpl, ObjectSubclass, GtkApplicationImpl};
 
 #[derive(Default)]
 pub struct AppImpl {
-    dirs: OnceCell<Rc<Dirs>>,
-    config: OnceCell<Rc<Config>>,
+    pub dirs: OnceCell<Rc<Dirs>>,
+    pub config: OnceCell<Rc<Config>>,
+    pub controller: OnceCell<Controller>,
+    pub ui_config: OnceCell<UiConfig>,
     window: OnceCell<MainWindow>
 }
 
@@ -23,26 +25,26 @@ impl ObjectSubclass for AppImpl {
     type ParentType = gtk::Application;
 }
 
-impl AppImpl {
-    pub fn init(&self, config: Rc<Config>, dirs: Rc<Dirs>) {
-        self.config.set(config).unwrap();
-        self.dirs.set(dirs).unwrap();
-    }
-}
 impl ObjectImpl for AppImpl {}
 impl ApplicationImpl for AppImpl {
     fn startup(&self, application: &Self::Type) {
         self.parent_startup(application);
-        //TODO: Config and controller code here
-
         application.load_css(self.dirs.get().unwrap());
     }
     fn activate(&self, application: &Self::Type) {
         self.parent_activate(application);
         self.window.set(
-            application.build_ui(self.config.get().unwrap().get_module_config("UI").ok())
+            application.build_ui(self.ui_config.get().unwrap())
         ).unwrap();
         self.window.get().unwrap().present();
     }
 }
 impl GtkApplicationImpl for AppImpl {}
+
+local_config!(UiConfig {
+    width: i32 = "width" (-1),
+    height: i32 = "height" (-1),
+    anchor: Vec<bool> = "anchor" (vec![true, true, true, false]),
+    margin: Vec<i32> = "margin" (vec![0, 0, 0, 0]),
+    exclusive: bool = "exclusive" (false)
+});

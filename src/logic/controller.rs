@@ -1,18 +1,19 @@
+use crate::config::Config;
+use crate::dirs::Dirs;
+use crate::logic::{Id, Item, ItemModul};
 use std::rc::Rc;
-use crate::{Id, Dirs, Config};
-use crate::logic::{Item, ItemModul};
 
 use super::modules::ConsoleModule;
 
 #[derive(Debug)]
-pub struct Controller<'a> {
-    item_modules: Vec<Box<dyn ItemModul + 'a>>,
+pub struct Controller {
+    item_modules: Vec<Box<dyn ItemModul>>,
 }
 
-impl<'a> Controller<'a>
+impl Controller
 {
-    pub fn new(config: &'a Config, dirs: &'a Dirs) -> Self {
-        let mut item_modules = Vec::<Box<dyn ItemModul + 'a>>::new();
+    pub fn new(config: Rc<Config>, _dirs: Rc<Dirs>) -> Self {
+        let mut item_modules = Vec::<Box<dyn ItemModul>>::new();
 
         //TODO Proper module creation
         item_modules.push(

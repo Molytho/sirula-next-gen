@@ -1,19 +1,20 @@
 mod application_priv;
-use gtk::prelude::CssProviderExt;
-use gtk::CssProvider;
-use crate::Dirs;
-use gtk::prelude::WidgetExt;
-use crate::config::ConfigProvider;
-use crate::config::ModuleConfig;
-use gtk::subclass::prelude::ObjectSubclassExt;
-use crate::Config;
-use std::rc::Rc;
 use application_priv::AppImpl;
 
-use glib::Object;
-use gtk::{gio, glib};
 use log::error;
+use std::borrow::Borrow;
+use std::rc::Rc;
+use crate::config::Config;
+use crate::dirs::Dirs;
+use crate::logic::Controller;
+use crate::ui::application::application_priv::UiConfig;
 use crate::ui::main_window::MainWindow;
+use glib::Object;
+use gtk::prelude::{CssProviderExt, WidgetExt};
+use gtk::subclass::prelude::ObjectSubclassExt;
+use gtk::{gio, glib, CssProvider};
+
+static XDG_DIR_NAME: &str = "sirula-next-gen";
 
 glib::wrapper! {
     pub struct App(ObjectSubclass<AppImpl>)
@@ -35,12 +36,12 @@ impl App {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );  
     }
-    fn build_ui(&self, config: Option<ModuleConfig<'_>>) -> MainWindow {
-        let width = config.get_or::<i32>("width", -1);
-        let height = config.get_or::<i32>("height", -1);
-        let anchor = config.get_or::<Vec<bool>>("anchor", vec![true, true, true, false]);
-        let margin = config.get_or::<Vec<i32>>("margin", vec![0, 0, 0, 0]);
-        let exclusive = config.get_or::<bool>("exclusive", false);
+    fn build_ui(&self, config: &UiConfig) -> MainWindow {
+        let width = config.width;
+        let height = config.height;
+        let anchor = &config.anchor;
+        let margin = &config.margin;
+        let exclusive = config.exclusive;
 
         let window = MainWindow::new(self);
         window.set_size_request(width, height);
@@ -63,10 +64,22 @@ impl App {
         window
     }
 
-    pub fn new(app_id: &str, config: Rc<Config>, dirs: Rc<Dirs>) -> Self {
+    pub fn new(app_id: &str) -> Self {
         let obj = Object::new(&[("application-id", &app_id)]).expect("Failed to create App");
-        let priv_ = AppImpl::from_instance(&obj);
-        priv_.init(config, dirs);
+        let self_priv = AppImpl::from_instance(&obj);
+
+        let dirs = Rc::new(Dirs::new(XDG_DIR_NAME).unwrap());
+        self_priv.dirs.set(Rc::clone(&dirs)).unwrap();
+
+        let config = Rc::new(Config::new(dirs.borrow()).unwrap()); //TODO: Error handling
+        self_priv.config.set(Rc::clone(&config)).unwrap();
+
+        let controller = Controller::new(config, dirs);
+        self_priv.controller.set(controller).unwrap();
+
+        let config = self_priv.config.get().unwrap();
+        self_priv.ui_config.set(UiConfig::new(config.get_module_config("UI").ok())).unwrap();
+
         obj
     }
 }

@@ -1,5 +1,4 @@
 mod main_window_priv;
-use gtk::ListBoxRow;
 use main_window_priv::MainWindowImpl;
 
 use glib::Object;
@@ -14,6 +13,7 @@ glib::wrapper! {
 impl MainWindow {
     fn on_key_press_event(&self, event: &gtk::gdk::EventKey) -> Inhibit {
         use gtk::gdk::keys::constants::*;
+        #[allow(non_upper_case_globals)]
         Inhibit(
             match event.keyval() {
                 Escape => {
