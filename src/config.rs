@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+use once_cell::unsync::Lazy;
 use std::fmt::Debug;
 use log::{debug, info, warn};
 
@@ -127,7 +129,7 @@ pub struct ModuleConfig<'a> {
     values: &'a Table
 }
 
-impl <'a> ModuleConfig<'a> {
+impl<'a> ModuleConfig<'a> {
     pub fn get_config<'de, T : Deserialize<'de> + Debug>(&self, name: &str) -> ConfigResult<T> {
         if self.values.contains_key(name) {
             match self.values[name].clone().try_into() {
@@ -144,5 +146,22 @@ impl <'a> ModuleConfig<'a> {
             info!("Config {} not found", name);
             Err(ConfigErrorType::NotFound.into())
         }
+    }
+}
+
+pub trait ConfigProvider {
+    fn get_or_default<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T;
+    fn get_or_default_lazy<'de, T : Deserialize<'de> + Debug  + Default>(&self, name: &str, default: Lazy<T>) -> T;
+}
+impl ConfigProvider for Option<ModuleConfig<'_>> {
+    fn get_or_default<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T {
+        self.as_ref().map(|config| {
+            config.get_config::<T>(name).ok()
+        }).flatten().unwrap_or(default)
+    }
+    fn get_or_default_lazy<'de, T : Deserialize<'de> + Debug + Default>(&self, name: &str, mut default: Lazy<T>) -> T {
+        self.as_ref().map(|config| {
+            config.get_config::<T>(name).ok()
+        }).flatten().unwrap_or(std::mem::take(default.borrow_mut()))
     }
 }

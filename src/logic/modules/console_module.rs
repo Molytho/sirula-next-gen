@@ -1,3 +1,5 @@
+use once_cell::unsync::Lazy;
+use crate::config::ConfigProvider;
 use log::error;
 use std::rc::Rc;
 use std::path::Path;
@@ -58,12 +60,14 @@ impl ItemModul for ConsoleModule<'_> {
         assert!(!self.item.command.is_empty());
         assert!(id.get_item_id() == 0);
 
-        let binary = self.config.as_ref().map(|config| {
-            config.get_config::<String>("binary").ok()
-        }).flatten().unwrap_or(DEFAULT_BINARY.to_string());
-        let args = self.config.as_ref().map(|config| {
-            config.get_config::<Vec<String>>("args").ok()
-        }).flatten().unwrap_or(DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec());
+        let binary = self.config.get_or_default_lazy::<String>(
+            "binary",
+            Lazy::new(||{DEFAULT_BINARY.to_string()})
+        );
+        let args = self.config.get_or_default_lazy::<Vec<String>>(
+            "args",
+            Lazy::new(|| {DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec()})
+        );
 
         let mut command = Command::new(binary);
         for arg in args {

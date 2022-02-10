@@ -691,6 +691,7 @@ dependencies = [
  "gtk",
  "gtk-layer-shell",
  "log",
+ "once_cell",
  "serde",
  "toml 0.4.10",
  "xdg",

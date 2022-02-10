@@ -3,12 +3,14 @@ mod config;
 mod logic;
 mod ui;
 
+use std::rc::Rc;
 use ui::App;
 use std::path::Path;
 use log::debug;
 use config::Config;
 use dirs::Dirs;
 use logic::{Id, Controller};
+use gtk::prelude::ApplicationExtManual;
 
 fn main() -> Result<(), i32> {
     env_logger::init();
@@ -18,8 +20,9 @@ fn main() -> Result<(), i32> {
     let config = Config::from_path(Path::new("config.toml"))
         .expect("Could not open config file");
     debug!("{:?}", config);
+    let config = Rc::new(config);
 
-    let mut controller = Controller::new(&config, &dirs);
+    let mut controller = Controller::new(config.as_ref(), &dirs);
     debug!("{:?}", controller);
     let input = read_input();
     controller.set_search_term(input);
@@ -30,9 +33,9 @@ fn main() -> Result<(), i32> {
         println!("{}: {}", count, item);
         count += 1;
     }
-    //controller.select(Id::new(0, 0))
+    //controller.select(Id::new(0, 0));
 
-    let app = App::new("com.molytho.sirula-next-gen");
+    let app = App::new("com.molytho.sirula-next-gen", Rc::clone(&config));
     let result = app.run();
     if result == 0 {
         Ok(())

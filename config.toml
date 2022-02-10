@@ -1,3 +1,5 @@
 [Console]
 binary="/usr/bin/alacritty"
 args=["-e", "sh", "-c"]
+
+[UI]
