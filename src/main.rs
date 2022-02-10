@@ -21,8 +21,9 @@ fn main() -> Result<(), i32> {
         .expect("Could not open config file");
     debug!("{:?}", config);
     let config = Rc::new(config);
+    let dirs = Rc::new(dirs);
 
-    let mut controller = Controller::new(config.as_ref(), &dirs);
+    let mut controller = Controller::new(config.as_ref(), dirs.as_ref());
     debug!("{:?}", controller);
     let input = read_input();
     controller.set_search_term(input);
@@ -35,7 +36,8 @@ fn main() -> Result<(), i32> {
     }
     //controller.select(Id::new(0, 0));
 
-    let app = App::new("com.molytho.sirula-next-gen", Rc::clone(&config));
+    gtk::init().unwrap();
+    let app = App::new("com.molytho.sirula-next-gen", Rc::clone(&config), Rc::clone(&dirs));
     let result = app.run();
     if result == 0 {
         Ok(())

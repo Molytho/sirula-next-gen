@@ -150,16 +150,16 @@ impl<'a> ModuleConfig<'a> {
 }
 
 pub trait ConfigProvider {
-    fn get_or_default<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T;
-    fn get_or_default_lazy<'de, T : Deserialize<'de> + Debug  + Default>(&self, name: &str, default: Lazy<T>) -> T;
+    fn get_or<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T;
+    fn get_or_lazy<'de, T : Deserialize<'de> + Debug  + Default>(&self, name: &str, default: Lazy<T>) -> T;
 }
 impl ConfigProvider for Option<ModuleConfig<'_>> {
-    fn get_or_default<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T {
+    fn get_or<'de, T : Deserialize<'de> + Debug>(&self, name: &str, default: T) -> T {
         self.as_ref().map(|config| {
             config.get_config::<T>(name).ok()
         }).flatten().unwrap_or(default)
     }
-    fn get_or_default_lazy<'de, T : Deserialize<'de> + Debug + Default>(&self, name: &str, mut default: Lazy<T>) -> T {
+    fn get_or_lazy<'de, T : Deserialize<'de> + Debug + Default>(&self, name: &str, mut default: Lazy<T>) -> T {
         self.as_ref().map(|config| {
             config.get_config::<T>(name).ok()
         }).flatten().unwrap_or(std::mem::take(default.borrow_mut()))

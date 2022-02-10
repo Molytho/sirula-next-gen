@@ -1,3 +1,7 @@
+use gtk::prelude::GtkWindowExt;
+use gtk::Inhibit;
+use gtk::prelude::WidgetExt;
+use gtk::subclass::prelude::ObjectImplExt;
 use glib::subclass::InitializingObject;
 use gtk::prelude::InitializingWidgetExt;
 use gtk::subclass::widget::{WidgetClassSubclassExt, CompositeTemplate};
@@ -28,7 +32,25 @@ impl ObjectSubclass for MainWindowImpl {
     }
 }
 
-impl ObjectImpl for MainWindowImpl {}
+impl ObjectImpl for MainWindowImpl {
+    fn constructed(&self, obj: &Self::Type) {
+        self.parent_constructed(obj);
+        obj.connect_key_press_event(|window, event| {
+            use gtk::gdk::keys::constants::*;
+            Inhibit(
+                match event.keyval() {
+                    Escape => {
+                        window.close();
+                        true
+                    },
+                    _ => {
+                        false
+                    }
+                }
+            )
+        });
+    }
+}
 impl WidgetImpl for MainWindowImpl {}
 impl ContainerImpl for MainWindowImpl {}
 impl BinImpl for MainWindowImpl {}

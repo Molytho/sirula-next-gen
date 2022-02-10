@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use log::debug;
 
 use std::fs::{File, OpenOptions};
@@ -62,6 +63,10 @@ impl Dirs {
         debug!("Try opening config file with name {}", name);
         let path = self.xdg_dirs.get_config_file(name);
         Ok(File::open(path)?)
+    }
+
+    pub fn get_config_file_path(&self, name: &str) -> PathBuf {
+        self.xdg_dirs.get_config_file(name)
     }
 
     pub fn get_cache_file(&self, name: &str) -> DirResult<File> {

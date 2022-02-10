@@ -1,5 +1,10 @@
 [Console]
-binary="/usr/bin/alacritty"
-args=["-e", "sh", "-c"]
+binary = "/usr/bin/alacritty"
+args = ["-e", "sh", "-c"]
 
 [UI]
+anchor = [false, false, false, false]
+margin = [0, 0, 0, 0]
+width = 1300
+height = 600
+exclusive = false
