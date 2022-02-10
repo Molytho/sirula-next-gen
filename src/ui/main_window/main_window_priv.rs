@@ -1,11 +1,9 @@
-use gtk::prelude::GtkWindowExt;
-use gtk::Inhibit;
-use gtk::prelude::WidgetExt;
-use gtk::subclass::prelude::ObjectImplExt;
+use gtk::prelude::EntryExt;
+use gtk::EditableSignals;
 use glib::subclass::InitializingObject;
-use gtk::prelude::InitializingWidgetExt;
+use gtk::prelude::{InitializingWidgetExt, WidgetExt};
 use gtk::subclass::widget::{WidgetClassSubclassExt, CompositeTemplate};
-use gtk::subclass::prelude::{ApplicationWindowImpl, WindowImpl, BinImpl, ContainerImpl, WidgetImpl, ObjectImpl, ObjectSubclass, TemplateChild};
+use gtk::subclass::prelude::{ApplicationWindowImpl, WindowImpl, BinImpl, ContainerImpl, WidgetImpl, ObjectImpl, ObjectImplExt, ObjectSubclass, TemplateChild};
 use gtk::{ApplicationWindow, Entry, ListBox, CompositeTemplate, glib};
 
 #[derive(CompositeTemplate, Default)]
@@ -35,20 +33,10 @@ impl ObjectSubclass for MainWindowImpl {
 impl ObjectImpl for MainWindowImpl {
     fn constructed(&self, obj: &Self::Type) {
         self.parent_constructed(obj);
-        obj.connect_key_press_event(|window, event| {
-            use gtk::gdk::keys::constants::*;
-            Inhibit(
-                match event.keyval() {
-                    Escape => {
-                        window.close();
-                        true
-                    },
-                    _ => {
-                        false
-                    }
-                }
-            )
-        });
+        obj.connect_key_press_event(Self::Type::on_key_press_event);
+        self.entry.connect_changed(
+            glib::clone!(@weak obj => move |e| obj.on_search_term_changed(e.text()))
+        );
     }
 }
 impl WidgetImpl for MainWindowImpl {}

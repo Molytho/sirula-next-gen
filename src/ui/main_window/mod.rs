@@ -1,9 +1,10 @@
 mod main_window_priv;
-
+use gtk::ListBoxRow;
 use main_window_priv::MainWindowImpl;
+
 use glib::Object;
-use gtk::{Application, gio, glib};
-use gtk::prelude::IsA;
+use gtk::{Application, Inhibit, gio, glib};
+use gtk::prelude::{IsA, GtkWindowExt};
 
 glib::wrapper! {
     pub struct MainWindow(ObjectSubclass<MainWindowImpl>)
@@ -11,6 +12,24 @@ glib::wrapper! {
         @implements gio::ActionGroup, gio::ActionMap, gtk::Buildable;
 }
 impl MainWindow {
+    fn on_key_press_event(&self, event: &gtk::gdk::EventKey) -> Inhibit {
+        use gtk::gdk::keys::constants::*;
+        Inhibit(
+            match event.keyval() {
+                Escape => {
+                    self.close();
+                    true
+                },
+                _ => {
+                    false
+                }
+            }
+        )
+    }
+    fn on_search_term_changed(&self, text: glib::GString) {
+        println!("{}", text);
+    }
+
     pub fn new<T : IsA<Application>>(app: &T) -> Self {
         Object::new(&[("application", app)]).expect("Failed to create Window")
     }
