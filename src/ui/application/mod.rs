@@ -1,6 +1,10 @@
 mod application_priv;
 use application_priv::AppImpl;
+mod list_model;
 
+use std::cell::RefCell;
+use glib::GString;
+use gtk::ListBox;
 use log::error;
 use std::borrow::Borrow;
 use std::rc::Rc;
@@ -64,6 +68,17 @@ impl App {
         window
     }
 
+    pub fn update_items(&self, search_term: GString) {
+        let priv_ = AppImpl::from_instance(self);
+        let mut controller = priv_.controller.get().unwrap().borrow_mut();
+        let model = priv_.model.get().unwrap();
+
+        controller.set_search_term(search_term.to_string());
+        let iter = controller.iter();
+
+        model.update_items(iter);
+    }
+
     pub fn new(app_id: &str) -> Self {
         let obj = Object::new(&[("application-id", &app_id)]).expect("Failed to create App");
         let self_priv = AppImpl::from_instance(&obj);
@@ -75,7 +90,7 @@ impl App {
         self_priv.config.set(Rc::clone(&config)).unwrap();
 
         let controller = Controller::new(config, dirs);
-        self_priv.controller.set(controller).unwrap();
+        self_priv.controller.set(RefCell::new(controller)).unwrap();
 
         let config = self_priv.config.get().unwrap();
         self_priv.ui_config.set(UiConfig::new(config.get_module_config("UI").ok())).unwrap();

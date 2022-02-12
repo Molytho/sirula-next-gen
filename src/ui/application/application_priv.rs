@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use crate::config::{Config, ModuleConfig};
 use crate::dirs::Dirs;
 use crate::local_config;
@@ -8,12 +9,14 @@ use once_cell::unsync::OnceCell;
 use gtk::subclass::prelude::{ApplicationImpl, ApplicationImplExt, ObjectImpl, ObjectSubclass, GtkApplicationImpl};
 use gtk::prelude::GtkWindowExt;
 use gtk::glib;
+use super::list_model::Model;
 
 #[derive(Default)]
 pub struct AppImpl {
     pub dirs: OnceCell<Rc<Dirs>>,
     pub config: OnceCell<Rc<Config>>,
-    pub controller: OnceCell<Controller>,
+    pub controller: OnceCell<RefCell<Controller>>,
+    pub model: OnceCell<Model>,
     pub ui_config: OnceCell<UiConfig>,
     window: OnceCell<MainWindow>
 }
@@ -36,6 +39,8 @@ impl ApplicationImpl for AppImpl {
         self.window.set(
             application.build_ui(self.ui_config.get().unwrap())
         ).unwrap();
+        self.model.set(Model::new()).unwrap();
+        self.window.get().unwrap().register_model(self.model.get().unwrap(), Model::create_widget);
         self.window.get().unwrap().present();
     }
 }

@@ -1,6 +1,6 @@
+use crate::logic::item::Icon;
 use log::error;
 use std::rc::Rc;
-use std::path::Path;
 use std::process::Command;
 use crate::local_config;
 use crate::{config::ModuleConfig};
@@ -27,8 +27,8 @@ impl Item for ConsoleItem {
     fn get_sub_text(&self) -> &str {
         self.command.as_str()
     }
-    fn get_icon_path(&self) -> Option<&Path> {
-        None
+    fn get_icon(&self) -> Icon<'_> {
+        Icon::Name("Alacritty")
     }
     fn get_id(&self) -> Id {
         self.id

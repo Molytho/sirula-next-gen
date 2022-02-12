@@ -1,14 +1,20 @@
-use std::path::Path;
+use std::path::PathBuf;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CacheControl {
+    None,
     Icon,
     Text,
     Both
 }
+pub enum Icon<'a> {
+    Path(PathBuf),
+    Name(&'a str),
+    None
+}
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Id {
     mod_id: u16,
     item_id: u16
@@ -33,13 +39,20 @@ impl Display for Id {
 pub trait Item : std::fmt::Debug {
     fn get_main_text(&self) -> &str;
     fn get_sub_text(&self) -> &str;
-    fn get_icon_path(&self) -> Option<&Path>;
+    fn get_icon(&self) -> Icon<'_>;
     fn get_id(&self) -> Id;
     fn cache_control(&self) -> CacheControl {
         CacheControl::Both
     }
     //TODO: Digest
 }
+
+impl<'a> PartialEq for dyn Item + 'a {
+    fn eq(&self, other: &Self) -> bool {
+        other.get_id() == self.get_id()
+    }
+}
+impl<'a> Eq for dyn Item + 'a {}
 
 impl<'a> Display for dyn Item + 'a {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
