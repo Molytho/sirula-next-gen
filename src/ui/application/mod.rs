@@ -2,21 +2,21 @@ mod application_priv;
 use application_priv::AppImpl;
 mod list_model;
 
-use std::cell::RefCell;
-use glib::GString;
-use gtk::ListBox;
-use log::error;
+use log::{warn, error};
 use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::rc::Rc;
+
 use crate::config::Config;
 use crate::dirs::Dirs;
 use crate::logic::Controller;
 use crate::ui::application::application_priv::UiConfig;
 use crate::ui::main_window::MainWindow;
-use glib::Object;
+
+use gtk::{gio, glib, CssProvider};
 use gtk::prelude::{CssProviderExt, WidgetExt};
 use gtk::subclass::prelude::ObjectSubclassExt;
-use gtk::{gio, glib, CssProvider};
+use glib::{Object, GString};
 
 static XDG_DIR_NAME: &str = "sirula-next-gen";
 
@@ -86,14 +86,12 @@ impl App {
         let dirs = Rc::new(Dirs::new(XDG_DIR_NAME).unwrap());
         self_priv.dirs.set(Rc::clone(&dirs)).unwrap();
 
-        let config = Rc::new(Config::new(dirs.borrow()).unwrap()); //TODO: Error handling
-        self_priv.config.set(Rc::clone(&config)).unwrap();
+        warn!("Missing error handling: App::new(...)");
+        let config = Config::new(dirs.borrow()).unwrap(); //TODO: Error handling
+        self_priv.ui_config.set(UiConfig::new(config.get_module_config("UI").ok())).unwrap();
 
         let controller = Controller::new(config, dirs);
         self_priv.controller.set(RefCell::new(controller)).unwrap();
-
-        let config = self_priv.config.get().unwrap();
-        self_priv.ui_config.set(UiConfig::new(config.get_module_config("UI").ok())).unwrap();
 
         obj
     }

@@ -1,15 +1,12 @@
-use once_cell::sync::OnceCell;
-use gtk::prelude::ToValue;
-use gtk::prelude::ImageExt;
-use gtk::prelude::LabelExt;
 use log::warn;
 use once_cell::sync::Lazy;
+
+use gtk::{glib, ListBoxRow, Image, Label, CompositeTemplate};
+use gtk::prelude::{LabelExt, ImageExt, InitializingWidgetExt, ToValue};
+use gtk::subclass::prelude::{BinImpl, ContainerImpl, WidgetImpl, ObjectImpl, ObjectSubclass, TemplateChild, ListBoxRowImpl};
+use gtk::subclass::widget::{WidgetClassSubclassExt, CompositeTemplate};
 use glib::{ParamSpec, ParamFlags, Value};
 use glib::subclass::InitializingObject;
-use gtk::prelude::InitializingWidgetExt;
-use gtk::subclass::widget::{WidgetClassSubclassExt, CompositeTemplate};
-use gtk::subclass::prelude::{BinImpl, ContainerImpl, WidgetImpl, ObjectImpl, ObjectSubclass, TemplateChild, ListBoxRowImpl};
-use gtk::{ListBoxRow, Image, Label, CompositeTemplate, glib};
 
 #[derive(CompositeTemplate, Default)]
 #[template(file = "list_item.ui")]

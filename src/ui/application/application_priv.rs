@@ -1,24 +1,23 @@
+use std::rc::Rc;
 use std::cell::RefCell;
-use crate::config::{Config, ModuleConfig};
+use once_cell::unsync::OnceCell;
+
+use crate::config::ModuleConfig;
 use crate::dirs::Dirs;
 use crate::local_config;
 use crate::logic::Controller;
-use crate::ui::main_window::MainWindow;
-use std::rc::Rc;
-use once_cell::unsync::OnceCell;
-use gtk::subclass::prelude::{ApplicationImpl, ApplicationImplExt, ObjectImpl, ObjectSubclass, GtkApplicationImpl};
-use gtk::prelude::GtkWindowExt;
-use gtk::glib;
 use super::list_model::Model;
+
+use gtk::glib;
+use gtk::prelude::GtkWindowExt;
+use gtk::subclass::prelude::{ApplicationImpl, ApplicationImplExt, ObjectImpl, ObjectSubclass, GtkApplicationImpl};
 
 #[derive(Default)]
 pub struct AppImpl {
     pub dirs: OnceCell<Rc<Dirs>>,
-    pub config: OnceCell<Rc<Config>>,
     pub controller: OnceCell<RefCell<Controller>>,
     pub model: OnceCell<Model>,
     pub ui_config: OnceCell<UiConfig>,
-    window: OnceCell<MainWindow>
 }
 
 #[glib::object_subclass]
@@ -36,13 +35,16 @@ impl ApplicationImpl for AppImpl {
     }
     fn activate(&self, application: &Self::Type) {
         self.parent_activate(application);
-        self.window.set(
-            application.build_ui(self.ui_config.get().unwrap())
-        ).unwrap();
-        //TODO: CONFIG LOAD
-        self.model.set(Model::new(64, 2)).unwrap();
-        self.window.get().unwrap().register_model(self.model.get().unwrap(), self.model.get().unwrap().create_widget_fn());
-        self.window.get().unwrap().present();
+        
+        let ui_config = self.ui_config.get().unwrap();
+        let lines = ui_config.lines;
+        let pixel_size = ui_config.pixel_size;
+        self.model.set(Model::new(pixel_size, lines)).unwrap();
+
+        let window = application.build_ui(self.ui_config.get().unwrap());
+        let model = self.model.get().unwrap();
+        window.register_model(model, model.create_widget_fn());
+        window.present();
     }
 }
 impl GtkApplicationImpl for AppImpl {}
@@ -52,5 +54,7 @@ local_config!(UiConfig {
     height: i32 = "height" (-1),
     anchor: Vec<bool> = "anchor" (vec![true, true, true, false]),
     margin: Vec<i32> = "margin" (vec![0, 0, 0, 0]),
-    exclusive: bool = "exclusive" (false)
+    exclusive: bool = "exclusive" (false),
+    lines: i32 = "lines" (2),
+    pixel_size: i32 = "icon-size" (64)
 });

@@ -12,7 +12,7 @@ pub struct Controller {
 
 impl Controller
 {
-    pub fn new(config: Rc<Config>, _dirs: Rc<Dirs>) -> Self {
+    pub fn new(config: Config, _dirs: Rc<Dirs>) -> Self {
         let mut item_modules = Vec::<Box<dyn ItemModul>>::new();
 
         //TODO Proper module creation

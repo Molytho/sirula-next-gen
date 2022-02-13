@@ -8,3 +8,5 @@ margin = [0, 0, 0, 0]
 width = 1300
 height = 600
 exclusive = false
+icon-size = 64
+lines = 2
