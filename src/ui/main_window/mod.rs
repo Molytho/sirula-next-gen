@@ -1,4 +1,5 @@
 mod main_window_priv;
+use crate::logic::Id;
 use gtk::prelude::ListBoxExt;
 use gtk::Widget;
 use gio::ListModel;
@@ -40,6 +41,11 @@ impl MainWindow {
         let app = self.application().unwrap().downcast::<App>().unwrap();
         app.update_items(text);
     }
+    fn on_selected(&self, id: Id) {
+        let app = self.application().unwrap().downcast::<App>().unwrap();
+        app.select_item(id);
+        self.close();
+    }
 
     pub fn new<T : IsA<Application>>(app: &T) -> Self {
         Object::new(&[("application", app)]).expect("Failed to create Window")
@@ -58,12 +64,22 @@ glib::wrapper! {
         @implements gtk::Actionable, gtk::Buildable;
 }
 impl ListItem {
-    pub fn new(label: &str, pixel_size: i32, lines: i32) -> Self {
-        Object::new(&[("label", &label),("pixel-size", &pixel_size),("lines", &lines)]).expect("Failed to create item")
+    pub fn new(id: Id, label: &str, pixel_size: i32, lines: i32) -> Self {
+        let obj = Object::new(&[("label", &label),("pixel-size", &pixel_size),("lines", &lines)]).expect("Failed to create item");
+        let priv_ = ListItemImpl::from_instance(&obj);
+
+        priv_.id.set(id).unwrap();
+
+        obj
     }
 
     pub fn set_icon(&self, buf: &Pixbuf) {
         let priv_ = ListItemImpl::from_instance(&self);
         priv_.image.set_from_pixbuf(Some(buf));
+    }
+
+    pub fn get_id(&self) -> Id {
+        let priv_ = ListItemImpl::from_instance(&self);
+        priv_.id.get().unwrap().clone()
     }
 }

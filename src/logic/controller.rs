@@ -25,7 +25,7 @@ impl Controller
 
         Controller { item_modules }
     }
-    pub fn select(self, id: Id) -> Result<(), i32> {
+    pub fn select(&self, id: Id) -> Result<(), i32> {
         let index: usize = id.get_mod_id().into();
         let module = &self.item_modules[index];
         module.select(id)

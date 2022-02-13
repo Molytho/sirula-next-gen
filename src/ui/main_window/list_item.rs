@@ -1,5 +1,8 @@
 use log::warn;
 use once_cell::sync::Lazy;
+use once_cell::unsync::OnceCell;
+
+use crate::logic::Id;
 
 use gtk::{glib, ListBoxRow, Image, Label, CompositeTemplate};
 use gtk::prelude::{LabelExt, ImageExt, InitializingWidgetExt, ToValue};
@@ -14,7 +17,8 @@ pub struct ListItemImpl {
     #[template_child]
     pub image: TemplateChild<Image>,
     #[template_child]
-    pub label: TemplateChild<Label>
+    pub label: TemplateChild<Label>,
+    pub id: OnceCell<Id>
 }
 
 #[glib::object_subclass]

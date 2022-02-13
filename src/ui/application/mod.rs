@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use crate::config::Config;
 use crate::dirs::Dirs;
-use crate::logic::Controller;
+use crate::logic::{Id, Controller};
 use crate::ui::application::application_priv::UiConfig;
 use crate::ui::main_window::MainWindow;
 
@@ -77,6 +77,16 @@ impl App {
         let iter = controller.iter();
 
         model.update_items(iter);
+    }
+
+    pub fn select_item(&self, id: Id) -> i32 {
+        let priv_ = AppImpl::from_instance(self);
+        let controller = priv_.controller.get().unwrap().borrow_mut();
+
+        match controller.select(id) {
+            Ok(_) => 0,
+            Err(i) => i
+        }
     }
 
     pub fn new(app_id: &str) -> Self {

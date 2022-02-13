@@ -2,7 +2,7 @@ mod list_model_priv;
 use list_model_priv::{ModelImpl, ItemDataImpl};
 
 use log::warn;
-use crate::logic::{CacheControl, Icon, Item};
+use crate::logic::{CacheControl, Icon, Item, Id};
 use crate::ui::main_window::ListItem;
 use gtk::{gio, glib, gdk_pixbuf, Widget, IconLookupFlags, IconTheme};
 use gtk::prelude::{Cast, ObjectExt, ListModelExt, IconThemeExt};
@@ -37,8 +37,9 @@ impl Model {
         let data = obj.downcast_ref::<ItemData>().unwrap();
         let data_priv = ItemDataImpl::from_instance(&data);
 
+        let id = data_priv.id.get().unwrap();
         let text = data_priv.text.borrow();
-        let widget = ListItem::new(text.as_str(), pixel_size, lines);
+        let widget = ListItem::new(id.clone(), text.as_str(), pixel_size, lines);
         if let Some(icon) = &*data_priv.icon.borrow() {
             widget.set_icon(icon);
         }
@@ -118,7 +119,7 @@ impl Model {
                     let icon = item.get_icon();
                     data_map.insert(
                         id,
-                        (text, icon, icon_size).into()
+                        (id, text, icon, icon_size).into()
                     );
                 }
             }
@@ -149,12 +150,13 @@ glib::wrapper! {
     pub struct ItemData(ObjectSubclass<ItemDataImpl>);
 }
 impl ItemData {
-    pub fn new(text: String, icon: Option<Pixbuf>) -> Self {
+    pub fn new(id: Id, text: String, icon: Option<Pixbuf>) -> Self {
         let obj = Object::new(&[]).expect("Failed to create item");
         let priv_ = ItemDataImpl::from_instance(&obj);
 
         *priv_.text.borrow_mut() = text;
         *priv_.icon.borrow_mut() = icon;
+        priv_.id.set(id).unwrap();
 
         obj
     }
@@ -190,10 +192,10 @@ impl ItemData {
         }
     }
 }
-impl From<(String, Icon<'_>, i32)> for ItemData {
-    fn from(input: (String, Icon<'_>, i32)) -> Self {
-        let (text, icon, icon_size) = input;
+impl From<(Id, String, Icon<'_>, i32)> for ItemData {
+    fn from(input: (Id, String, Icon<'_>, i32)) -> Self {
+        let (id, text, icon, icon_size) = input;
         let icon = Self::load_icon(icon, icon_size);
-        Self::new(text, icon)
+        Self::new(id, text, icon)
     }
 }

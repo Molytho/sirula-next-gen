@@ -49,6 +49,7 @@ impl ListModelImpl for ModelImpl {
 
 #[derive(Default)]
 pub struct ItemDataImpl  {
+    pub id: OnceCell<Id>,
     pub text: RefCell<String>,
     pub icon: RefCell<Option<Pixbuf>>,
     pub widget: RefCell<Option<WeakRef<ListItem>>>
