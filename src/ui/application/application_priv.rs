@@ -40,9 +40,12 @@ impl ApplicationImpl for AppImpl {
         let lines = ui_config.lines;
         let pixel_size = ui_config.pixel_size;
         self.model.set(Model::new(pixel_size, lines)).unwrap();
+        let model = self.model.get().unwrap();
+        model.update_items(
+            self.controller.get().unwrap().borrow().iter()
+        );
 
         let window = application.build_ui(self.ui_config.get().unwrap());
-        let model = self.model.get().unwrap();
         window.register_model(model, model.create_widget_fn());
         window.present();
     }

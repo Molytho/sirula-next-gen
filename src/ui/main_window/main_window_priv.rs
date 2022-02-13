@@ -1,13 +1,10 @@
-use gtk::prelude::Cast;
 use crate::ui::main_window::ListItem;
-use gtk::prelude::ListBoxExt;
-use gtk::prelude::EntryExt;
-use gtk::EditableSignals;
-use glib::subclass::InitializingObject;
-use gtk::prelude::{InitializingWidgetExt, WidgetExt};
+
+use gtk::{glib, ApplicationWindow, Entry, EditableSignals, ListBox, CompositeTemplate};
+use gtk::prelude::{InitializingWidgetExt, Cast, EntryExt, ListBoxExt, WidgetExt};
 use gtk::subclass::widget::{WidgetClassSubclassExt, CompositeTemplate};
 use gtk::subclass::prelude::{ApplicationWindowImpl, WindowImpl, BinImpl, ContainerImpl, WidgetImpl, ObjectImpl, ObjectImplExt, ObjectSubclass, TemplateChild};
-use gtk::{ApplicationWindow, Entry, ListBox, CompositeTemplate, glib};
+use glib::subclass::InitializingObject;
 
 #[derive(CompositeTemplate, Default)]
 #[template(file = "main_window.ui")]
@@ -38,15 +35,16 @@ impl ObjectImpl for MainWindowImpl {
         self.parent_constructed(obj);
 
         obj.connect_key_press_event(Self::Type::on_key_press_event);
+
         self.entry.connect_changed(
-            glib::clone!(@weak obj => move |e| obj.on_search_term_changed(e.text()))
+            glib::clone!(@weak obj => move |e| {
+                obj.on_search_term_changed(e.text())
+            })
         );
         let list_box = &self.list_box.get();
         self.entry.connect_activate(
             glib::clone!(@weak list_box => move |_| {
                 if let Some(row) = list_box.selected_row() {
-                    row.activate();
-                } else if let Some(row) = list_box.row_at_index(0) {
                     row.activate();
                 }
             })

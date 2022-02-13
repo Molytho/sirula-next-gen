@@ -12,13 +12,13 @@ pub struct Controller {
 
 impl Controller
 {
-    pub fn new(config: Config, _dirs: Rc<Dirs>) -> Self {
+    pub fn new(config: Option<Config>, _dirs: Rc<Dirs>) -> Self {
         let mut item_modules = Vec::<Box<dyn ItemModul>>::new();
 
         //TODO Proper module creation
         item_modules.push(
             ConsoleModule::boxed_item_module(
-                config.get_module_config("Console").ok(),
+                config.as_ref().map(|c| c.get_module_config("Console").ok()).flatten(),
                 0
             )
         );

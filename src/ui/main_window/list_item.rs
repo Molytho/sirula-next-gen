@@ -1,4 +1,3 @@
-use log::warn;
 use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
 
@@ -84,7 +83,7 @@ impl ObjectImpl for ListItemImpl {
                 self.label.set_label(value);
             },
             _ => {
-                warn!("Unimplemented!: {} {:?}", pspec.name(), value);
+                panic!("set_property called for unknown property {}", pspec.name());
             }
         }
     }
@@ -101,8 +100,7 @@ impl ObjectImpl for ListItemImpl {
                 self.label.label().to_value()
             },
             _ => {
-                warn!("Unimplemented!: {}", pspec.name());
-                unimplemented!()
+                panic!("get_property called for unknown property {}", pspec.name());
             }
         }
     }

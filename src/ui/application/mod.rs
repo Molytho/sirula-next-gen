@@ -2,7 +2,7 @@ mod application_priv;
 use application_priv::AppImpl;
 mod list_model;
 
-use log::{warn, error};
+use log::error;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -96,9 +96,12 @@ impl App {
         let dirs = Rc::new(Dirs::new(XDG_DIR_NAME).unwrap());
         self_priv.dirs.set(Rc::clone(&dirs)).unwrap();
 
-        warn!("Missing error handling: App::new(...)");
-        let config = Config::new(dirs.borrow()).unwrap(); //TODO: Error handling
-        self_priv.ui_config.set(UiConfig::new(config.get_module_config("UI").ok())).unwrap();
+        let config = Config::new(dirs.borrow()).ok();
+        self_priv.ui_config.set(
+            UiConfig::new(
+                config.as_ref().map(|config| config.get_module_config("UI").ok()).flatten()
+            )
+        ).unwrap();
 
         let controller = Controller::new(config, dirs);
         self_priv.controller.set(RefCell::new(controller)).unwrap();

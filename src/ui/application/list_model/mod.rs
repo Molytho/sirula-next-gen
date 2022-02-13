@@ -161,14 +161,28 @@ impl ItemData {
         obj
     }
     fn load_icon(icon: Icon<'_>, icon_size: i32) -> Option<Pixbuf> {
-        warn!("TODO: Missing error handling!: load_icon(icon: Icon<'_>, icon_size: i32)");
         match icon {
             Icon::Path(path) => {
-                Some(Pixbuf::from_file(path).unwrap())
+                match Pixbuf::from_file(&path) {
+                    Ok(buf) => {
+                        Some(buf)
+                    }
+                    Err(err) => {
+                        warn!("Loading icon path {} failed: {}", path.display(), err);
+                        None
+                    }
+                }
             }
             Icon::Name(name) => {
-                let icon_theme = IconTheme::default().unwrap();
-                Some(icon_theme.load_icon(name, icon_size, IconLookupFlags::FORCE_SIZE).unwrap().unwrap())
+                IconTheme::default().map( |icon_theme| {
+                    match icon_theme.load_icon(name, icon_size, IconLookupFlags::FORCE_SIZE) {
+                        Ok(icon) => Some(icon.unwrap()), //WHEN DOES THIS HAPPEN?
+                        Err(err) => {
+                            warn!("Loading icon from theme failed: {}", err);
+                            None
+                        }
+                    }
+                }).flatten()
             }
             Icon::None => None
         }

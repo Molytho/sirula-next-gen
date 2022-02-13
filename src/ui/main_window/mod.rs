@@ -1,20 +1,17 @@
 mod main_window_priv;
-use crate::logic::Id;
-use gtk::prelude::ListBoxExt;
-use gtk::Widget;
-use gio::ListModel;
-use gtk::prelude::Cast;
-use crate::App;
-use gtk::prelude::ImageExt;
 use main_window_priv::MainWindowImpl;
 mod list_item;
 use list_item::ListItemImpl;
 
-use glib::Object;
-use gtk::{Application, Inhibit, gio, glib};
-use gtk::prelude::{IsA, GtkWindowExt};
+use crate::App;
+use crate::logic::Id;
+
+use gtk::{glib, gio, gdk_pixbuf, Application, Inhibit, Widget};
+use gtk::prelude::{Cast, ImageExt, IsA, GtkWindowExt, ListBoxExt};
 use gtk::subclass::prelude::ObjectSubclassExt;
-use gtk::gdk_pixbuf::Pixbuf;
+use glib::Object;
+use gio::ListModel;
+use gdk_pixbuf::Pixbuf;
 
 glib::wrapper! {
     pub struct MainWindow(ObjectSubclass<MainWindowImpl>)
@@ -37,9 +34,16 @@ impl MainWindow {
             }
         )
     }
+    fn select_first_item(&self) {
+        let list_box = &MainWindowImpl::from_instance(&self).list_box.get();
+        if let Some(row) = list_box.row_at_index(0) {
+            list_box.select_row(Some(&row));
+        }
+    }
     fn on_search_term_changed(&self, text: glib::GString) {
         let app = self.application().unwrap().downcast::<App>().unwrap();
         app.update_items(text);
+        self.select_first_item();
     }
     fn on_selected(&self, id: Id) {
         let app = self.application().unwrap().downcast::<App>().unwrap();
@@ -55,6 +59,7 @@ impl MainWindow {
         let priv_ = MainWindowImpl::from_instance(&self);
         let list_box = &priv_.list_box.get();
         list_box.bind_model(Some(model), create_widget_func);
+        self.select_first_item();
     }
 }
 
