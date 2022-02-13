@@ -1,6 +1,7 @@
 [Console]
 binary = "/usr/bin/alacritty"
 args = ["-e", "sh", "-c"]
+icon-name = "Alacritty"
 
 [UI]
 anchor = [false, false, false, false]

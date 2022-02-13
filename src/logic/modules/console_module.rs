@@ -13,11 +13,12 @@ static DEFAULT_ARGS: [&str; 3] = ["-e", "sh", "-c"];
 #[derive(Debug)]
 struct ConsoleItem {
     id: Id,
-    command: Rc<String>
+    command: Rc<String>,
+    config: ConsoleConfig
 }
 impl ConsoleItem {
-    fn new(mod_id: u16) -> Self {
-        ConsoleItem { id: Id::new(mod_id, 0), command: Rc::new("".to_owned()) }
+    fn new(mod_id: u16, config: ConsoleConfig) -> Self {
+        ConsoleItem { id: Id::new(mod_id, 0), command: Rc::new("".to_owned()), config }
     }
 }
 impl Item for ConsoleItem {
@@ -28,7 +29,10 @@ impl Item for ConsoleItem {
         self.command.as_str()
     }
     fn get_icon(&self) -> Icon<'_> {
-        Icon::Name("Alacritty")
+        match &self.config.icon_name {
+            Some(name) => Icon::Name(name.as_str()),
+            None => Icon::None
+        }
     }
     fn get_id(&self) -> Id {
         self.id
@@ -40,17 +44,17 @@ impl Item for ConsoleItem {
 
 local_config!(ConsoleConfig {
     binary: String = "binary" (DEFAULT_BINARY.to_string()),
-    args: Vec<String> = "args" (DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec())
+    args: Vec<String> = "args" (DEFAULT_ARGS.map(|str|{str.to_string()}).to_vec()),
+    icon_name: Option<String> = "icon-name" (None)
 });
 
 #[derive(Debug)]
 pub struct ConsoleModule {
-    item: ConsoleItem,
-    config: ConsoleConfig
+    item: ConsoleItem
 }
 impl ConsoleModule {
     pub fn new(config: Option<ModuleConfig<'_>>, id: u16) -> Self {
-        ConsoleModule { item: ConsoleItem::new(id), config: ConsoleConfig::new(config) }
+        ConsoleModule { item: ConsoleItem::new(id, ConsoleConfig::new(config)) }
     }
     pub fn boxed_item_module(config: Option<ModuleConfig<'_>>, id: u16) -> Box<dyn ItemModul> {
         Box::new(ConsoleModule::new(config, id))
@@ -64,8 +68,8 @@ impl ItemModul for ConsoleModule {
         assert!(!self.item.command.is_empty());
         assert!(id.get_item_id() == 0);
 
-        let binary = &self.config.binary;
-        let args = &self.config.args;
+        let binary = &self.item.config.binary;
+        let args = &self.item.config.args;
 
         let mut command = Command::new(binary);
         for arg in args {
