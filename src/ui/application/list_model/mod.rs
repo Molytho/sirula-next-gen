@@ -1,53 +1,58 @@
 mod list_model_priv;
-use gtk::prelude::IconThemeExt;
-use gtk::IconTheme;
 use list_model_priv::{ModelImpl, ItemDataImpl};
 
-use gtk::prelude::ListModelExt;
-use gtk::prelude::ObjectExt;
-use crate::ui::main_window::ListItem;
-use crate::logic::{CacheControl, Icon};
-use gtk::subclass::prelude::ObjectSubclassExt;
 use log::warn;
-use crate::logic::Item;
-use gtk::glib;
-use gtk::gio;
+use crate::logic::{CacheControl, Icon, Item};
+use crate::ui::main_window::ListItem;
+use gtk::{gio, glib, gdk_pixbuf, Widget, IconLookupFlags, IconTheme};
+use gtk::prelude::{Cast, ObjectExt, ListModelExt, IconThemeExt};
+use gtk::subclass::prelude::ObjectSubclassExt;
 use glib::Object;
-use gtk::Widget;
-use gtk::prelude::Cast;
-use gtk::gdk_pixbuf::Pixbuf;
-use gtk::IconLookupFlags;
+use gdk_pixbuf::Pixbuf;
+
 
 glib::wrapper! {
     pub struct Model(ObjectSubclass<ModelImpl>)
         @implements gio::ListModel;
 }
 impl Model {
-    pub fn new() -> Self {
-        Object::new(&[]).expect("Failed to create item")
+    pub fn new(pixel_size: i32, lines: i32) -> Self {
+        let self_ = Object::new(&[]).expect("Failed to create Model");
+        let priv_ = ModelImpl::from_instance(&self_);
+
+        priv_.lines.set(lines).unwrap();
+        priv_.pixel_size.set(pixel_size).unwrap();
+
+        self_
     }
 
-    pub fn create_widget(obj: &Object) -> Widget {
-        let data: ItemData = obj.clone().downcast::<ItemData>().unwrap();
+    pub fn create_widget_fn(&self) -> impl Fn(&Object) -> Widget {
+        let priv_ = ModelImpl::from_instance(&self);
+        let pixel_size = priv_.pixel_size.get().unwrap().clone();
+        let lines = priv_.lines.get().unwrap().clone();
+
+        move |obj| Self::create_widget(obj, pixel_size, lines)
+    }
+    fn create_widget(obj: &Object, pixel_size: i32, lines: i32) -> Widget {
+        let data = obj.downcast_ref::<ItemData>().unwrap();
         let data_priv = ItemDataImpl::from_instance(&data);
 
         let text = data_priv.text.borrow();
-        let widget = ListItem::new(text.as_str(), 64, 2);
+        let widget = ListItem::new(text.as_str(), pixel_size, lines);
         if let Some(icon) = &*data_priv.icon.borrow() {
             widget.set_icon(icon);
         }
-        //TODO: Weak Reference?
-        *data_priv.widget.borrow_mut() = Some(widget.clone());
+        *data_priv.widget.borrow_mut() = Some(widget.downgrade());
 
         widget.upcast()
     }
 
     pub fn update_items(&self, iter: std::vec::IntoIter<&(dyn Item)>) {
         let mut change_stack = Vec::<(u32, u32, u32)>::new();
-
         {
-            let mut item_vec = ModelImpl::from_instance(&self).items.borrow_mut();
-            let mut data_map = ModelImpl::from_instance(&self).data_items.borrow_mut();
+            let priv_ = ModelImpl::from_instance(&self);
+            let mut item_vec = priv_.items.borrow_mut();
+            let mut data_map = priv_.data_items.borrow_mut();
             let items: Vec<&(dyn Item)> = iter.collect();
 
             let mut index = 0;
@@ -64,6 +69,7 @@ impl Model {
                     if id == item_vec[i] { 
                         index = i;
                         found = true;
+                        break;
                     }
                 };
 
@@ -84,52 +90,35 @@ impl Model {
 
                 // Now update the item
                 if let Some(data) = data_map.get(&id) {
+                    // cached instance found: Update data and widget
                     let data_priv = ItemDataImpl::from_instance(&data);
                     match item.cache_control() {
                         CacheControl::Both => {}
                         CacheControl::Text => {
-                            warn!("CacheControl not implemented");
+                            let icon_size = priv_.pixel_size.get().unwrap().clone();
+                            data.update_icon(data_priv, item.get_icon(), icon_size, found);
                         }
                         CacheControl::Icon => {
-                            *data_priv.text.borrow_mut() = Self::item_format_text(item.get_main_text(), item.get_sub_text());
-                            if found {
-                                // This item wasn't newly added so the reference in data is valid. Update values on widget too
-                                let ui = data_priv.widget.borrow();
-                                let ui = ui.as_ref().unwrap();
-                                let text = data_priv.text.borrow();
-                                let text = text.as_str();
-                                ui.set_property("label", text).unwrap();
-                            }
+                            let text = Self::item_format_text(item);
+                            data.update_text(data_priv, text, found);
                         }
                         CacheControl::None => {
-                            warn!("CacheControl not implemented"); // ICON
-                            let text = Self::item_format_text(item.get_main_text(), item.get_sub_text());
-                            if found {
-                                // This item wasn't newly added so the reference in data is valid. Update values on widget too
-                                let ui = data_priv.widget.borrow();
-                                let ui = ui.as_ref().unwrap();
-                                let text = data_priv.text.borrow();
-                                let text = text.as_str();
-                                ui.set_property("label", text).unwrap();
-                            }
+                            //TODO: Maybe: Use bitfield here
+                            let text = Self::item_format_text(item);
+                            data.update_text(data_priv, text, found);
+                            let icon_size = priv_.pixel_size.get().unwrap().clone();
+                            data.update_icon(data_priv, item.get_icon(), icon_size, found);
                         }
                     }
                 }
                 else {
-                    let icon: Option<Pixbuf> = match item.get_icon() {
-                        Icon::Path(path) => {
-                            todo!()
-                        }
-                        Icon::Name(name) => {
-                            let icon_theme = IconTheme::default().unwrap();
-                            Some(icon_theme.load_icon(name, 64, IconLookupFlags::FORCE_SIZE).unwrap().unwrap())
-                        }
-                        Icon::None => None
-                    };
-                    warn!("Icon not implemented");
+                    // new element: Create and insert a new item
+                    let icon_size = priv_.pixel_size.get().unwrap().clone();
+                    let text = Self::item_format_text(item);
+                    let icon = item.get_icon();
                     data_map.insert(
                         id,
-                        ItemData::new(Self::item_format_text(item.get_main_text(), item.get_sub_text()), icon)
+                        (text, icon, icon_size).into()
                     );
                 }
             }
@@ -143,13 +132,15 @@ impl Model {
             *item_vec = items.into_iter().map(|item| item.get_id()).collect();
         }
 
+        // Send the change events at the end because we need to adjust the data first.
+        // This has to be outside of the scope of item_vec and data_map
         while let Some((pos, rem, add)) = change_stack.pop() {
             self.items_changed(pos, rem, add);
         }
 
     }
-    fn item_format_text(text: &str, sub: &str) -> String {
-        format!("{}: {}", text, sub)
+    fn item_format_text(item: &dyn Item) -> String {
+        format!("{}: {}", item.get_main_text(), item.get_sub_text())
     }
 }
 
@@ -166,5 +157,43 @@ impl ItemData {
         *priv_.icon.borrow_mut() = icon;
 
         obj
+    }
+    fn load_icon(icon: Icon<'_>, icon_size: i32) -> Option<Pixbuf> {
+        warn!("TODO: Missing error handling!: load_icon(icon: Icon<'_>, icon_size: i32)");
+        match icon {
+            Icon::Path(path) => {
+                Some(Pixbuf::from_file(path).unwrap())
+            }
+            Icon::Name(name) => {
+                let icon_theme = IconTheme::default().unwrap();
+                Some(icon_theme.load_icon(name, icon_size, IconLookupFlags::FORCE_SIZE).unwrap().unwrap())
+            }
+            Icon::None => None
+        }
+    }
+    pub fn update_icon(&self, priv_: &ItemDataImpl, icon: Icon, icon_size: i32, update_widget: bool) {
+        let mut icon_ref = priv_.icon.borrow_mut();
+        *icon_ref = Self::load_icon(icon, icon_size);
+        if update_widget {
+            let ui = priv_.widget.borrow();
+            let ui = ui.as_ref().unwrap().upgrade().unwrap();
+            ui.set_property("label", &*icon_ref).unwrap();
+        }
+    }
+    pub fn update_text(&self, priv_: &ItemDataImpl, text: String, update_widget: bool) {
+        let mut text_ref = priv_.text.borrow_mut();
+        *text_ref = text;
+        if update_widget {
+            let ui = priv_.widget.borrow();
+            let ui = ui.as_ref().unwrap().upgrade().unwrap();
+            ui.set_property("label", &*text_ref).unwrap();
+        }
+    }
+}
+impl From<(String, Icon<'_>, i32)> for ItemData {
+    fn from(input: (String, Icon<'_>, i32)) -> Self {
+        let (text, icon, icon_size) = input;
+        let icon = Self::load_icon(icon, icon_size);
+        Self::new(text, icon)
     }
 }

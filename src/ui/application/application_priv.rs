@@ -39,8 +39,9 @@ impl ApplicationImpl for AppImpl {
         self.window.set(
             application.build_ui(self.ui_config.get().unwrap())
         ).unwrap();
-        self.model.set(Model::new()).unwrap();
-        self.window.get().unwrap().register_model(self.model.get().unwrap(), Model::create_widget);
+        //TODO: CONFIG LOAD
+        self.model.set(Model::new(64, 2)).unwrap();
+        self.window.get().unwrap().register_model(self.model.get().unwrap(), self.model.get().unwrap().create_widget_fn());
         self.window.get().unwrap().present();
     }
 }

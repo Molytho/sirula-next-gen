@@ -1,21 +1,26 @@
-use crate::ui::main_window::ListItem;
-use crate::ui::application::list_model::ItemData;
 use std::cell::RefCell;
-use gio::{ListModel, Icon};
-use gtk::prelude::Cast;
-use gtk::prelude::StaticType;
-use crate::logic::Id;
 use std::collections::HashMap;
-use gtk::{glib, gio};
-use gtk::gdk_pixbuf::Pixbuf;
+use once_cell::unsync::OnceCell;
+
+use crate::logic::Id;
+use crate::ui::application::glib::WeakRef;
+use crate::ui::application::list_model::ItemData;
+use crate::ui::main_window::ListItem;
+
+use gtk::{glib, gio, gdk_pixbuf};
+use gtk::prelude::{Cast, StaticType};
 use glib::Object;
 use glib::subclass::prelude::{ObjectImpl, ObjectSubclass};
-use gtk::gio::subclass::prelude::ListModelImpl;
+use gio::ListModel;
+use gio::subclass::prelude::ListModelImpl;
+use gdk_pixbuf::Pixbuf;
 
 #[derive(Default)]
 pub struct ModelImpl {
     pub data_items: RefCell<HashMap<Id, ItemData>>,
-    pub items: RefCell<Vec<Id>>
+    pub items: RefCell<Vec<Id>>,
+    pub pixel_size: OnceCell<i32>,
+    pub lines: OnceCell<i32>
 }
 
 #[glib::object_subclass]
@@ -25,7 +30,6 @@ impl ObjectSubclass for ModelImpl {
     type ParentType = glib::Object;
     type Interfaces = (ListModel,);
 }
-
 impl ObjectImpl for ModelImpl {}
 impl ListModelImpl for ModelImpl {
     fn item_type(&self, _: &Self::Type) -> gtk::glib::Type {
@@ -47,7 +51,7 @@ impl ListModelImpl for ModelImpl {
 pub struct ItemDataImpl  {
     pub text: RefCell<String>,
     pub icon: RefCell<Option<Pixbuf>>,
-    pub widget: RefCell<Option<ListItem>>
+    pub widget: RefCell<Option<WeakRef<ListItem>>>
 }
 #[glib::object_subclass]
 impl ObjectSubclass for ItemDataImpl {
