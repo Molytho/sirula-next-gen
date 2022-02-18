@@ -1,13 +1,14 @@
 mod list_model_priv;
 use list_model_priv::{ModelImpl, ItemDataImpl};
 
-use log::warn;
-use crate::logic::{CacheControl, Icon, Item, Id};
+use std::collections::VecDeque;
+use crate::logic::{CacheControl, Item, Id};
 use crate::ui::main_window::ListItem;
 use gtk::{gio, glib, gdk_pixbuf, Widget, IconLookupFlags, IconTheme};
 use gtk::prelude::{Cast, ObjectExt, ListModelExt, IconThemeExt};
 use gtk::subclass::prelude::ObjectSubclassExt;
 use glib::Object;
+use gio::Icon;
 use gdk_pixbuf::Pixbuf;
 
 
@@ -49,7 +50,7 @@ impl Model {
     }
 
     pub fn update_items(&self, iter: std::vec::IntoIter<&(dyn Item)>) {
-        let mut change_stack = Vec::<(u32, u32, u32)>::new();
+        let mut change_queue = VecDeque::<(u32, u32, u32)>::new();
         {
             let priv_ = ModelImpl::from_instance(&self);
             let mut item_vec = priv_.items.borrow_mut();
@@ -58,7 +59,6 @@ impl Model {
 
             let mut index = 0;
             let mut add = 0;
-            let mut rem = 0;
             for i in 0..items.len() {
                 let item = items[i];
                 let id = item.get_id();
@@ -79,14 +79,17 @@ impl Model {
                     add += 1;
                 } else if old_index == index {
                     // If found at current index submit transaction
-                    if add != 0 || rem != 0 {
-                        change_stack.push((index as u32, rem as u32, add as u32));
-                        add = 0; rem = 0;
+                    if add != 0 {
+                        change_queue.push_back(((i - add) as u32, 0, add as u32));
+                        add = 0;
                     }
                     index += 1;
                 } else {
                     // Found at a later position. Need to remove elements
-                    rem += index - old_index;
+                    let rem = index - old_index;
+                    change_queue.push_back(((i - add) as u32, rem as u32, add as u32));
+                    add = 0;
+                    index += 1;
                 }
 
                 // Now update the item
@@ -124,10 +127,10 @@ impl Model {
                 }
             }
             // We haven't found them so they are deleted
-            rem += item_vec.len() - index;
+            let rem = item_vec.len() - index;
             // And a transaction at the end
             if add != 0 || rem != 0 {
-                change_stack.push((index as u32, rem as u32, add as u32));
+                change_queue.push_back(((items.len() - add) as u32, rem as u32, add as u32));
             }
 
             *item_vec = items.into_iter().map(|item| item.get_id()).collect();
@@ -135,7 +138,7 @@ impl Model {
 
         // Send the change events at the end because we need to adjust the data first.
         // This has to be outside of the scope of item_vec and data_map
-        while let Some((pos, rem, add)) = change_stack.pop() {
+        while let Some((pos, rem, add)) = change_queue.pop_front() {
             self.items_changed(pos, rem, add);
         }
 
@@ -160,34 +163,17 @@ impl ItemData {
 
         obj
     }
-    fn load_icon(icon: Icon<'_>, icon_size: i32) -> Option<Pixbuf> {
-        match icon {
-            Icon::Path(path) => {
-                match Pixbuf::from_file(&path) {
-                    Ok(buf) => {
-                        Some(buf)
-                    }
-                    Err(err) => {
-                        warn!("Loading icon path {} failed: {}", path.display(), err);
-                        None
-                    }
-                }
-            }
-            Icon::Name(name) => {
-                IconTheme::default().map( |icon_theme| {
-                    match icon_theme.load_icon(name, icon_size, IconLookupFlags::FORCE_SIZE) {
-                        Ok(icon) => Some(icon.unwrap()), //WHEN DOES THIS HAPPEN?
-                        Err(err) => {
-                            warn!("Loading icon from theme failed: {}", err);
-                            None
-                        }
-                    }
-                }).flatten()
-            }
-            Icon::None => None
-        }
+    fn load_icon(icon: Option<Icon>, icon_size: i32) -> Option<Pixbuf> {
+        icon.map(|icon| {
+            let icon_theme = IconTheme::default().unwrap(); //TODO: Error handling
+            let lookup = icon_theme.lookup_by_gicon(&icon, icon_size, IconLookupFlags::FORCE_SIZE);
+
+            lookup.map(|icon_info| {
+                icon_info.load_icon().ok()
+            }).flatten()
+        }).flatten()
     }
-    pub fn update_icon(&self, priv_: &ItemDataImpl, icon: Icon, icon_size: i32, update_widget: bool) {
+    pub fn update_icon(&self, priv_: &ItemDataImpl, icon: Option<Icon>, icon_size: i32, update_widget: bool) {
         let mut icon_ref = priv_.icon.borrow_mut();
         *icon_ref = Self::load_icon(icon, icon_size);
         if update_widget {
@@ -206,8 +192,8 @@ impl ItemData {
         }
     }
 }
-impl From<(Id, String, Icon<'_>, i32)> for ItemData {
-    fn from(input: (Id, String, Icon<'_>, i32)) -> Self {
+impl From<(Id, String, Option<Icon>, i32)> for ItemData {
+    fn from(input: (Id, String, Option<Icon>, i32)) -> Self {
         let (id, text, icon, icon_size) = input;
         let icon = Self::load_icon(icon, icon_size);
         Self::new(id, text, icon)

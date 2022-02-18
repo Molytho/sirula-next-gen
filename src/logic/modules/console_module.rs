@@ -1,10 +1,11 @@
-use crate::logic::item::Icon;
 use log::error;
 use std::rc::Rc;
 use std::process::Command;
 use crate::local_config;
 use crate::{config::ModuleConfig};
 use crate::logic::{Id, Item, ItemModul, CacheControl};
+use gtk::glib::Cast;
+use gtk::gio::{Icon, ThemedIcon};
 
 static TEXT: &str = "Execute as command";
 static DEFAULT_BINARY: &str = "/usr/bin/alacritty";
@@ -28,11 +29,10 @@ impl Item for ConsoleItem {
     fn get_sub_text(&self) -> &str {
         self.command.as_str()
     }
-    fn get_icon(&self) -> Icon<'_> {
-        match &self.config.icon_name {
-            Some(name) => Icon::Name(name.as_str()),
-            None => Icon::None
-        }
+    fn get_icon(&self) -> Option<Icon> {
+        self.config.icon_name.as_ref().map(|icon_name| {
+            ThemedIcon::new(icon_name).upcast()
+        })
     }
     fn get_id(&self) -> Id {
         self.id

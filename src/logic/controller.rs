@@ -3,7 +3,7 @@ use crate::dirs::Dirs;
 use crate::logic::{Id, Item, ItemModul};
 use std::rc::Rc;
 
-use super::modules::ConsoleModule;
+use super::modules::{ConsoleModule, DesktopModule};
 
 #[derive(Debug)]
 pub struct Controller {
@@ -17,9 +17,15 @@ impl Controller
 
         //TODO Proper module creation
         item_modules.push(
+            DesktopModule::boxed_item_module(
+                config.as_ref().map(|c| c.get_module_config("Desktop").ok()).flatten(),
+                0
+            )
+        );
+        item_modules.push(
             ConsoleModule::boxed_item_module(
                 config.as_ref().map(|c| c.get_module_config("Console").ok()).flatten(),
-                0
+                1
             )
         );
 

@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::fmt::Display;
+use gtk::gio::Icon;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CacheControl {
@@ -7,11 +7,6 @@ pub enum CacheControl {
     Icon,
     Text,
     Both
-}
-pub enum Icon<'a> {
-    Path(PathBuf),
-    Name(&'a str),
-    None
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -39,7 +34,7 @@ impl Display for Id {
 pub trait Item : std::fmt::Debug {
     fn get_main_text(&self) -> &str;
     fn get_sub_text(&self) -> &str;
-    fn get_icon(&self) -> Icon<'_>;
+    fn get_icon(&self) -> Option<Icon>;
     fn get_id(&self) -> Id;
     fn cache_control(&self) -> CacheControl {
         CacheControl::Both
